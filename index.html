@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>便利貼看板</title>
+    <style>
+      :root {
+        --bg: #f3f4f6;
+        --panel: #ffffff;
+        --text: #111827;
+        --muted: #6b7280;
+        --line: #d1d5db;
+        --primary: #2563eb;
+        --primary-dark: #1d4ed8;
+        --green: #16a34a;
+        --green-dark: #15803d;
+        --red: #ef4444;
+        --shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        font-family: Arial, Helvetica, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      button, input, textarea {
+        font: inherit;
+      }
+
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: rgba(255, 255, 255, 0.92);
+        backdrop-filter: blur(8px);
+        border-bottom: 1px solid rgba(209, 213, 219, 0.8);
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+      }
+
+      .topbar-inner {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 16px 20px;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+      }
+
+      .title {
+        font-size: 2rem;
+        font-weight: 700;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #1f2937;
+        white-space: nowrap;
+      }
+
+      .palette-icon {
+        color: #3b82f6;
+        font-size: 1.6rem;
+      }
+
+      .controls {
+        display: flex;
+        flex: 1;
+        justify-content: center;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        width: 100%;
+      }
+
+      .search-wrap {
+        position: relative;
+        width: min(100%, 460px);
+      }
+
+      .search-icon {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #9ca3af;
+        font-size: 1.2rem;
+        pointer-events: none;
+      }
+
+      .search-input {
+        width: 100%;
+        height: 42px;
+        padding: 0 42px 0 42px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: white;
+        color: var(--text);
+        outline: none;
+      }
+
+      .search-input:focus {
+        border-color: #60a5fa;
+        box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2);
+      }
+
+      .clear-button {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        border: none;
+        background: transparent;
+        color: #9ca3af;
+        cursor: pointer;
+        font-size: 1rem;
+      }
+
+      .color-filter {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: #f9fafb;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 6px;
+      }
+
+      .color-filter .all-btn {
+        min-width: 32px;
+        height: 28px;
+        padding: 0 8px;
+        border: 1px solid #d1d5db;
+        border-radius: 999px;
+        background: #374151;
+        color: white;
+        font-size: 0.7rem;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .color-filter .all-btn.active {
+        background: #111827;
+        box-shadow: 0 2px 6px rgba(17, 24, 39, 0.2);
+      }
+
+      .divider {
+        width: 1px;
+        height: 20px;
+        background: #d1d5db;
+        margin: 0 4px;
+      }
+
+      .swatch-btn {
+        width: 28px;
+        height: 28px;
+        border: 2px solid transparent;
+        border-radius: 999px;
+        cursor: pointer;
+        transition: transform 0.2s ease, border-color 0.2s ease;
+      }
+
+      .swatch-btn:hover {
+        transform: scale(1.08);
+      }
+
+      .swatch-btn.active {
+        border-color: #111827;
+        transform: scale(1.1);
+        box-shadow: 0 4px 10px rgba(17, 24, 39, 0.2);
+      }
+
+      .primary-btn {
+        border: none;
+        background: var(--primary);
+        color: white;
+        border-radius: 8px;
+        padding: 10px 16px;
+        cursor: pointer;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: background 0.2s ease;
+        white-space: nowrap;
+      }
+
+      .primary-btn:hover { background: var(--primary-dark); }
+
+      .container {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 32px 20px 48px;
+      }
+
+      .note-form {
+        background: white;
+        border: 1px solid #f1f5f9;
+        border-radius: 16px;
+        box-shadow: var(--shadow);
+        padding: 24px;
+        margin-bottom: 32px;
+      }
+
+      .note-form.hidden,
+      .empty-state.hidden {
+        display: none;
+      }
+
+      .note-form h2 {
+        margin: 0 0 16px;
+        font-size: 1.1rem;
+        color: #374151;
+      }
+
+      .note-form textarea {
+        width: 100%;
+        min-height: 100px;
+        resize: vertical;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 12px 14px;
+        margin-bottom: 16px;
+        outline: none;
+      }
+
+      .note-form textarea:focus {
+        border-color: #60a5fa;
+        box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2);
+      }
+
+      .form-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+
+      .color-picker {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .color-picker-label {
+        font-size: 0.9rem;
+        color: #4b5563;
+        font-weight: 600;
+      }
+
+      .save-btn {
+        border: none;
+        background: var(--green);
+        color: white;
+        border-radius: 8px;
+        padding: 10px 24px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s ease;
+      }
+
+      .save-btn:hover { background: var(--green-dark); }
+
+      .save-btn:disabled {
+        background: #9ca3af;
+        cursor: not-allowed;
+      }
+
+      .empty-state {
+        text-align: center;
+        background: white;
+        border: 1px dashed #d1d5db;
+        border-radius: 16px;
+        padding: 64px 20px;
+        color: #6b7280;
+      }
+
+      .empty-state .icon {
+        font-size: 3rem;
+        color: #d1d5db;
+        display: block;
+        margin-bottom: 16px;
+      }
+
+      .notes-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 24px;
+        justify-content: center;
+      }
+
+      .note {
+        width: 256px;
+        min-height: 256px;
+        padding: 16px;
+        border-radius: 12px;
+        box-shadow: 0 10px 20px rgba(15, 23, 42, 0.12);
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        transition: transform 0.2s ease;
+      }
+
+      .note:hover { transform: scale(1.02); }
+
+      .note-controls {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        display: flex;
+        gap: 6px;
+      }
+
+      .icon-btn {
+        width: 28px;
+        height: 28px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.35);
+        color: #374151;
+        cursor: pointer;
+        transition: background 0.2s ease, color 0.2s ease;
+      }
+
+      .icon-btn:hover {
+        background: rgba(255, 255, 255, 0.6);
+      }
+
+      .icon-btn.save:hover { color: #15803d; }
+      .icon-btn.delete:hover { color: #dc2626; }
+      .icon-btn.edit:hover { color: #1d4ed8; }
+
+      .note-body {
+        margin-top: 26px;
+        flex: 1;
+        overflow: hidden;
+      }
+
+      .note-content {
+        width: 100%;
+        height: 100%;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+        color: #1f2937;
+        font-weight: 500;
+        line-height: 1.5;
+      }
+
+      .note-placeholder {
+        color: #6b7280;
+        font-style: italic;
+      }
+
+      .edit-textarea {
+        width: 100%;
+        height: 100%;
+        min-height: 150px;
+        resize: none;
+        border: none;
+        background: transparent;
+        outline: none;
+        color: #1f2937;
+        font: inherit;
+      }
+
+      .note-date {
+        margin-top: 10px;
+        text-align: right;
+        font-size: 0.75rem;
+        color: rgba(55, 65, 81, 0.7);
+      }
+
+      .bg-yellow-200 { background: #fef3c7; }
+      .bg-blue-200 { background: #dbeafe; }
+      .bg-green-200 { background: #dcfce7; }
+      .bg-pink-200 { background: #fce7f3; }
+      .bg-purple-200 { background: #ede9fe; }
+      .bg-orange-200 { background: #fed7aa; }
+
+      @media (max-width: 768px) {
+        .title {
+          font-size: 1.75rem;
+        }
+
+        .topbar-inner {
+          padding: 14px 16px;
+        }
+
+        .container {
+          padding-left: 16px;
+          padding-right: 16px;
+        }
+
+        .note-form {
+          padding: 18px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="topbar-inner">
+        <h1 class="title"><span class="palette-icon">🎨</span>便利貼看板</h1>
+
+        <div class="controls">
+          <div class="search-wrap">
+            <span class="search-icon">🔎</span>
+            <input id="searchInput" class="search-input" type="text" placeholder="搜尋便利貼內容..." />
+            <button id="clearSearchBtn" class="clear-button" aria-label="清除搜尋">✕</button>
+          </div>
+
+          <div class="color-filter" aria-label="顏色篩選器">
+            <button id="allColorBtn" class="all-btn active" type="button" data-color="">All</button>
+            <div class="divider"></div>
+            <button class="swatch-btn bg-yellow-200 active" type="button" data-color="bg-yellow-200" aria-label="篩選黃色"></button>
+            <button class="swatch-btn bg-blue-200" type="button" data-color="bg-blue-200" aria-label="篩選藍色"></button>
+            <button class="swatch-btn bg-green-200" type="button" data-color="bg-green-200" aria-label="篩選綠色"></button>
+            <button class="swatch-btn bg-pink-200" type="button" data-color="bg-pink-200" aria-label="篩選粉色"></button>
+            <button class="swatch-btn bg-purple-200" type="button" data-color="bg-purple-200" aria-label="篩選紫色"></button>
+            <button class="swatch-btn bg-orange-200" type="button" data-color="bg-orange-200" aria-label="篩選橘色"></button>
+          </div>
+        </div>
+
+        <button id="toggleFormBtn" class="primary-btn" type="button">
+          <span>＋</span>
+          <span id="toggleFormLabel">新增便利貼</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="container">
+      <section id="noteForm" class="note-form hidden">
+        <h2>建立新便利貼</h2>
+        <form id="addNoteForm">
+          <textarea id="newNoteContent" placeholder="寫下你的想法..." aria-label="新便利貼內容"></textarea>
+
+          <div class="form-row">
+            <div class="color-picker">
+              <span class="color-picker-label">選擇顏色：</span>
+              <div id="newColorPicker" class="color-picker"></div>
+            </div>
+
+            <button id="saveNoteBtn" class="save-btn" type="submit" disabled>儲存便利貼</button>
+          </div>
+        </form>
+      </section>
+
+      <div id="emptyState" class="empty-state hidden">
+        <span class="icon">📌</span>
+        <p style="font-size: 1.4rem; font-weight: 600; color: #4b5563; margin: 0;">目前沒有便利貼</p>
+        <p style="margin-top: 8px; font-size: 1rem;">點擊右上角的「新增便利貼」開始記錄您的想法！</p>
+      </div>
+
+      <div id="notesGrid" class="notes-grid" aria-live="polite"></div>
+    </main>
+
+    <script>
+      const COLORS = [
+        'bg-yellow-200',
+        'bg-blue-200',
+        'bg-green-200',
+        'bg-pink-200',
+        'bg-purple-200',
+        'bg-orange-200'
+      ];
+
+      const STORAGE_KEY = 'stickyNotes';
+
+      const state = {
+        notes: [],
+        formOpen: false,
+        selectedColor: COLORS[0],
+        searchQuery: '',
+        searchColor: '',
+        editingId: null
+      };
+
+      const noteForm = document.getElementById('noteForm');
+      const addNoteForm = document.getElementById('addNoteForm');
+      const newNoteContent = document.getElementById('newNoteContent');
+      const saveNoteBtn = document.getElementById('saveNoteBtn');
+      const notesGrid = document.getElementById('notesGrid');
+      const emptyState = document.getElementById('emptyState');
+      const searchInput = document.getElementById('searchInput');
+      const clearSearchBtn = document.getElementById('clearSearchBtn');
+      const toggleFormBtn = document.getElementById('toggleFormBtn');
+      const toggleFormLabel = document.getElementById('toggleFormLabel');
+      const allColorBtn = document.getElementById('allColorBtn');
+      const colorFilterButtons = Array.from(document.querySelectorAll('.swatch-btn'));
+      const newColorPicker = document.getElementById('newColorPicker');
+
+      function escapeHtml(value = '') {
+        return String(value)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function buildColorButtons() {
+        newColorPicker.innerHTML = COLORS.map((color) => `
+          <button
+            type="button"
+            class="swatch-btn ${color} ${state.selectedColor === color ? 'active' : ''}"
+            data-new-color="${color}"
+            aria-label="選擇顏色 ${color}"
+          ></button>
+        `).join('');
+      }
+
+      function updateFormState() {
+        noteForm.classList.toggle('hidden', !state.formOpen);
+        toggleFormLabel.textContent = state.formOpen ? '取消新增' : '新增便利貼';
+        toggleFormBtn.innerHTML = state.formOpen
+          ? '<span>✕</span><span>取消新增</span>'
+          : '<span>＋</span><span>新增便利貼</span>';
+      }
+
+      function updateSearchState() {
+        const hasQuery = Boolean(state.searchQuery.trim());
+        clearSearchBtn.style.display = hasQuery ? 'block' : 'none';
+      }
+
+      function updateFilterButtons() {
+        const activeColor = state.searchColor;
+        allColorBtn.classList.toggle('active', activeColor === '');
+        colorFilterButtons.forEach((button) => {
+          const isActive = button.dataset.color === activeColor;
+          button.classList.toggle('active', isActive);
+        });
+      }
+
+      function loadNotes() {
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY);
+          state.notes = saved ? JSON.parse(saved) : [];
+        } catch (error) {
+          console.error('Failed to parse notes from local storage', error);
+          state.notes = [];
+        }
+      }
+
+      function saveNotes() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state.notes));
+      }
+
+      function getFilteredNotes() {
+        return state.notes.filter((note) => {
+          const matchQuery = !state.searchQuery.trim() || (note.content || '').toLowerCase().includes(state.searchQuery.toLowerCase());
+          const matchColor = !state.searchColor || note.color === state.searchColor;
+          return matchQuery && matchColor;
+        });
+      }
+
+      function renderNotes() {
+        const filteredNotes = getFilteredNotes();
+
+        if (state.notes.length === 0) {
+          emptyState.classList.remove('hidden');
+          notesGrid.innerHTML = '';
+          return;
+        }
+
+        if (filteredNotes.length === 0) {
+          emptyState.classList.remove('hidden');
+          emptyState.innerHTML = `
+            <span class="icon">🔎</span>
+            <p style="font-size: 1.4rem; font-weight: 600; color: #4b5563; margin: 0;">找不到相符的便利貼</p>
+            <p style="margin-top: 8px; font-size: 1rem;">請嘗試其他搜尋關鍵字。</p>
+          `;
+          notesGrid.innerHTML = '';
+          return;
+        }
+
+        emptyState.classList.add('hidden');
+        notesGrid.innerHTML = filteredNotes.map((note) => {
+          const isEditing = note.id === state.editingId;
+          const noteContent = isEditing
+            ? `<textarea class="edit-textarea" data-id="${note.id}" aria-label="編輯便利貼內容">${escapeHtml(note.content || '')}</textarea>`
+            : `<div class="note-content">${note.content ? escapeHtml(note.content).replace(/\n/g, '<br>') : '<span class="note-placeholder">空便利貼...</span>'}</div>`;
+
+          const actionButton = isEditing
+            ? '<button type="button" class="icon-btn save" data-action="save" data-id="'+ note.id +'" aria-label="儲存編輯">✓</button>'
+            : '<button type="button" class="icon-btn edit" data-action="edit" data-id="'+ note.id +'" aria-label="編輯便利貼">✎</button>';
+
+          return `
+            <article class="note ${note.color}">
+              <div class="note-controls">
+                ${actionButton}
+                <button type="button" class="icon-btn delete" data-action="delete" data-id="${note.id}" aria-label="刪除便利貼">✕</button>
+              </div>
+
+              <div class="note-body">
+                ${noteContent}
+              </div>
+
+              <div class="note-date">${new Date(note.createdAt).toLocaleDateString()}</div>
+            </article>
+          `;
+        }).join('');
+
+        if (state.editingId) {
+          const textarea = notesGrid.querySelector(`textarea[data-id="${state.editingId}"]`);
+          if (textarea) {
+            textarea.focus();
+            textarea.selectionStart = textarea.value.length;
+            textarea.selectionEnd = textarea.value.length;
+          }
+        }
+      }
+
+      function handleAddNote(event) {
+        event.preventDefault();
+        const content = newNoteContent.value.trim();
+        if (!content) return;
+
+        const newNote = {
+          id: Date.now().toString(),
+          content,
+          color: state.selectedColor,
+          createdAt: new Date().toISOString()
+        };
+
+        state.notes = [...state.notes, newNote];
+        saveNotes();
+        renderNotes();
+
+        newNoteContent.value = '';
+        state.formOpen = false;
+        updateFormState();
+      }
+
+      function handleDeleteNote(id) {
+        const confirmed = window.confirm('確定要刪除這張便利貼嗎？');
+        if (!confirmed) return;
+
+        state.notes = state.notes.filter((note) => note.id !== id);
+        saveNotes();
+        renderNotes();
+      }
+
+      function handleUpdateNote(id, value) {
+        state.notes = state.notes.map((note) => note.id === id ? { ...note, content: value } : note);
+        saveNotes();
+      }
+
+      toggleFormBtn.addEventListener('click', () => {
+        state.formOpen = !state.formOpen;
+        updateFormState();
+        if (state.formOpen) {
+          newNoteContent.focus();
+        }
+      });
+
+      addNoteForm.addEventListener('submit', handleAddNote);
+
+      newNoteContent.addEventListener('input', () => {
+        saveNoteBtn.disabled = !newNoteContent.value.trim();
+      });
+
+      document.addEventListener('click', (event) => {
+        const actionButton = event.target.closest('[data-action]');
+        if (!actionButton) return;
+
+        const { action, id } = actionButton.dataset;
+
+        if (action === 'delete') {
+          handleDeleteNote(id);
+          return;
+        }
+
+        if (action === 'edit') {
+          state.editingId = id;
+          renderNotes();
+          return;
+        }
+
+        if (action === 'save') {
+          const input = notesGrid.querySelector(`textarea[data-id="${id}"]`);
+          const updatedContent = (input ? input.value : '').trim();
+          handleUpdateNote(id, updatedContent);
+          state.editingId = null;
+          renderNotes();
+        }
+      });
+
+      searchInput.addEventListener('input', (event) => {
+        state.searchQuery = event.target.value;
+        updateSearchState();
+        renderNotes();
+      });
+
+      clearSearchBtn.addEventListener('click', () => {
+        state.searchQuery = '';
+        searchInput.value = '';
+        updateSearchState();
+        renderNotes();
+      });
+
+      allColorBtn.addEventListener('click', () => {
+        state.searchColor = '';
+        updateFilterButtons();
+        renderNotes();
+      });
+
+      colorFilterButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+          const selected = button.dataset.color;
+          state.searchColor = state.searchColor === selected ? '' : selected;
+          updateFilterButtons();
+          renderNotes();
+        });
+      });
+
+      document.addEventListener('click', (event) => {
+        const newColorButton = event.target.closest('[data-new-color]');
+        if (!newColorButton) return;
+
+        state.selectedColor = newColorButton.dataset.newColor;
+        buildColorButtons();
+      });
+
+      loadNotes();
+      buildColorButtons();
+      updateFormState();
+      updateSearchState();
+      updateFilterButtons();
+      renderNotes();
+    </script>
+  </body>
+</html>
